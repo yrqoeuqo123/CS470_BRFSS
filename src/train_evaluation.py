@@ -6,7 +6,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import mean_squared_error, roc_auc_score, log_loss
+from sklearn.metrics import mean_squared_error, roc_auc_score, log_loss, f1_score, cohen_kappa_score
 
 
 # Load the sub-dataset
@@ -101,21 +101,28 @@ for dataset_name in subdatasets:
         
         # Predictions for F1-score
         y_pred = model.predict(X_test)
-        
+
         # Calculate metrics
         test_accuracy = accuracy_score(y_test, y_pred)
         report = classification_report(y_test, y_pred, output_dict=True, zero_division=1)
-        cross_entropy_loss = log_loss(y_test, y_proba) if y_proba is not None else None
-        f1_score = report['macro avg']['f1-score']
-        mse = mean_squared_error(y_test, y_pred)
-        
+        weighted_f1 = f1_score(y_test, y_pred, average='weighted')
+        macro_f1 = f1_score(y_test, y_pred, average='macro')
+        micro_f1 = f1_score(y_test, y_pred, average='micro')
+        multiclass_auc = roc_auc_score(y_test, y_proba, multi_class='ovr', average='weighted') if y_proba is not None else None
+        cohen_kappa = cohen_kappa_score(y_test, y_pred)
+        categorical_loss = log_loss(y_test, y_proba) if y_proba is not None else None
+
         # Print metrics
         print(f"Test Accuracy: {test_accuracy}")
         print("Classification Report:")
         print(report)
-        if cross_entropy_loss is not None:
-            print(f"Test Cross-Entropy Loss: {cross_entropy_loss}")
-        print(f"Test F1-Score: {f1_score}")
-        print(f"Test MSE: {mse}")
+        print(f"Weighted F1-Score: {weighted_f1}")
+        print(f"Macro F1-Score: {macro_f1}")
+        print(f"Micro F1-Score: {micro_f1}")
+        if multiclass_auc is not None:
+            print(f"Multiclass AUC-ROC: {multiclass_auc}")
+        print(f"Cohen's Kappa: {cohen_kappa}")
+        if categorical_loss is not None:
+            print(f"Categorical Cross-Entropy Loss: {categorical_loss}")
 
 print("All models have been trained and evaluated.")

@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from tensorflow.keras.layers import concatenate, GlobalMaxPooling1D
 from sklearn.metrics import mean_squared_error, f1_score
+from sklearn.metrics import roc_auc_score
 
 
 def apply_pca(X, n_components=0.95):
@@ -111,6 +112,7 @@ for dataset_name in subdatasets:
     y_test = test_data['Diabetes_012'].values
 
     # Normalize data
+    scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
 
@@ -133,19 +135,28 @@ for dataset_name in subdatasets:
     
     # Compute accuracy
     accuracy = accuracy_score(y_test, predicted_classes)
-    # Compute MSE
-    mse = mean_squared_error(y_test, predicted_classes)
+    # Compute weighted F1-Score
+    weighted_f1 = f1_score(y_test, predicted_classes, average='weighted')
     # Compute F1-Score (assuming a multiclass, average as 'macro' or 'weighted')
     f1 = f1_score(y_test, predicted_classes, average='macro')
     # Get loss value
     loss_value = history.history['loss'][-1]  # Get last loss value from the training history
+    # Compute multiclass AUC-ROC if probabilities are available
+    if hasattr(classification_model, "predict_proba"):
+        y_proba = classification_model.predict_proba(test_representations)
+        multiclass_auc = roc_auc_score(y_test, y_proba, multi_class='ovr', average='weighted')
+    else:
+        multiclass_auc = None
     
     results[dataset_name] = {
         'accuracy': accuracy,
-        'mse': mse,
+        'weighted_f1': weighted_f1,
         'f1_score': f1,
-        'final_loss': loss_value
+        'final_loss': loss_value,
+        'multiclass_auc': multiclass_auc
     }
-    print(f"Metrics for {dataset_name}: Accuracy: {accuracy:.2f}, MSE: {mse:.2f}, F1-Score: {f1:.2f}, Final Loss: {loss_value:.2f}")
+    print(f"Metrics for {dataset_name}: Accuracy: {accuracy:.2f}, Weighted F1-Score: {weighted_f1:.2f}, F1-Score: {f1:.2f}, Final Loss: {loss_value:.2f}")
+    if multiclass_auc is not None:
+        print(f"Multiclass AUC-ROC: {multiclass_auc:.2f}")
 
 print("\nFinal Results:", results)
